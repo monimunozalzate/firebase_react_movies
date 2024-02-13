@@ -9,7 +9,8 @@ import {
   doc,
   updateDoc,
 } from "firebase/firestore";
-import { ref, uploadBytes } from "firebase/storage";
+import { ref, uploadBytes, listAll, getDownloadURL } from "firebase/storage";
+import { v4 } from "uuid";
 
 function App() {
   const [movieList, setMovieList] = useState([]);
@@ -24,7 +25,11 @@ function App() {
   const [updatedTitle, setUpdatedTitle] = useState("");
 
   //file upload state
-  const [fileUpload, setFileUpload] = useState(null);
+  // const [fileUpload, setFileUpload] = useState(null);
+
+  //image upload
+  const [imageUpload, setImageUpload] = useState(null);
+  const [imageList, setImageList] = useState([]);
 
   const getMovieList = async () => {
     //read the data from db
@@ -42,9 +47,7 @@ function App() {
     }
   };
 
-  useEffect(() => {
-    getMovieList();
-  }, []);
+  
 
   //create a new movie
   const onSubmitMovie = async () => {
@@ -84,15 +87,39 @@ function App() {
     }
   };
 
-  const uploadFile = async () => {
-    if (!fileUpload) return;
-    const filesFolderRef = ref(storage, `projectFiles/${fileUpload.name}`);
-    try {
-      await uploadBytes(filesFolderRef, fileUpload);
-    } catch (error) {
-      console.log(error);
-    }
+  // const uploadFile = async () => {
+  //   if (!fileUpload) return;
+  //   const filesFolderRef = ref(storage, `projectFiles/${fileUpload.name}`);
+  //   try {
+  //     await uploadBytes(filesFolderRef, fileUpload);
+  //   } catch (error) {
+  //     console.log(error);
+  //   }
+  // };
+const imageListRef = ref(storage, "images/")
+  const uploadImage = async () => {
+    if (!imageUpload) return;
+    const imageRef = ref(storage, `images/${imageUpload.name + v4()}`);
+    uploadBytes(imageRef, imageUpload).then((snapshot) => {
+      getDownloadURL(snapshot.ref).then((url)=>{
+        setImageList((prev)=> [...prev, url])
+      })
+      alert("image uploaded");
+      
+    });
   };
+
+  useEffect(() => {
+    listAll(imageListRef).then((response)=>{
+     response.items.forEach((item)=>{
+      getDownloadURL(item).then((url)=>{
+        setImageList((prev)=> [...prev, url])
+      })
+     })
+    })
+    
+    getMovieList();
+  }, []);
 
   return (
     <>
@@ -143,7 +170,7 @@ function App() {
                 placeholder="New title"
                 type="text"
                 name=""
-                id="new title"
+                id="newtitle"
                 onChange={(e) => setUpdatedTitle(e.target.value)}
               />
               <button onClick={() => updateMovieTitle(movie.id)}>
@@ -153,7 +180,22 @@ function App() {
           </div>
         ))}
       </div>
+      <hr />
       <div>
+        <input
+          type="file"
+          name=""
+          id="file"
+          onChange={(e) => setImageUpload(e.target.files[0])}
+        />
+        <button onClick={uploadImage}>Upload Image</button>
+        {
+          imageList.map((url)=>{
+            return <img style={{margin:'auto', width:'300px'}} src={url} alt={url} key={url}/>
+          })
+        }
+      </div>
+      {/* <div>
         <hr />
         <input
           type="file"
@@ -162,7 +204,7 @@ function App() {
           onChange={(e) => setFileUpload(e.target.files[0])}
         />
         <button onClick={uploadFile}>Upload File </button>
-      </div>
+      </div> */}
     </>
   );
 }
